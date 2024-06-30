@@ -1,0 +1,99 @@
+# Module 4 - Assignment 1
+## Kelly Quesnel
+### Missing Data Assignment Quiz
+
+#### Libraries
+
+```{r}
+library(tidyverse)
+library(VIM)
+library(mice)
+```
+
+#### Read in data
+
+```{r}
+grades <- read_csv("class-grades.csv")
+```
+
+#### Task 1
+
+Q: For which variables is there missing data?
+A: Tutorial, Midterm, TakeHome, Final
+
+Code:
+```{r}
+summary(grades)
+```
+
+#### Task 2
+
+Q: Use the VIM package to visualize missingness. Are there any students that are missing multiple pieces of data?
+A: Yes
+
+Code:
+```{r}
+vim_plot <-
+  aggr(grades, numbers = TRUE, prop = c(TRUE,FALSE),cex.axis=0.7)
+```
+
+#### Task 3
+
+Q: Use row-wise deletion of missing values to create a new data frame. How many rows remain in this data frame?
+A: 89
+
+Code:
+```{r}
+grades_rowdel <- grades %>%
+  drop_na()
+
+nrow(grades_rowdel)
+```
+
+#### Task 4
+
+Q: Use column-wise deletion of missing values to create a new data frame (from the original data frame not from the data frame created in Task 3). How many columns remain in this data frame?
+A: 2
+
+Code:
+```{r}
+grades_coldel <- grades %>%
+  select(Prefix, Assignment)
+
+ncol(grades_coldel)
+```
+
+#### Task 5
+
+Q: Which approach (Task 3 or Task 4) seems preferable for this dataset? Briefly discuss your answer.
+A: Task 3 (row-wise deletion) is a better choice for this data set. First of all, when you do column-wise deletion, it removes almost 2/3 of the data, whereas with the row-wise deletion, very few observations are deleted. Most importantly, column-wise deletion here actually removes the entire response variable (Final), which prevents us from doing any analysis.
+
+#### Task 6
+
+Q: Use the “mice” package to impute the missing data in this dataset. Set “m = 5” and “method=”pmm"" in the imputation. You MUST use a random number seed of 123 for this imputation. What is the mean value for the “Final” variable after imputation?
+A: 68.33
+
+Code: 
+```{r}
+set.seed(123)
+imp_grades <-
+  mice(grades, m=5, method='pmm', printFlag=FALSE)
+
+summary(imp_grades)
+
+grades_complete <-
+  complete(imp_grades)
+
+summary(grades_complete)
+```
+
+
+
+
+
+
+
+
+
+
+

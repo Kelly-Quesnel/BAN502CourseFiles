@@ -1,0 +1,92 @@
+# Module 3 - Assignment 1
+## Kelly Quesnel
+### Model Validation Assignment Quiz
+
+Libraries
+```{r}
+library(tidyverse)
+library(lubridate)
+library(tidymodels)
+```
+
+Read in data
+```{r}
+bike <- read_csv("bike_cleaned-4.csv")
+```
+Clean data
+```{r}
+bike <- bike %>%
+  mutate(dteday = mdy(dteday))
+
+bike <- bike %>%
+  mutate_if(is.character,as_factor)
+
+bike <- bike %>%
+  mutate(hr = as_factor(hr))
+```
+
+Split the data into training and testing sets. Your training set should have 70% of the data.
+Use a random number (set.seed) of 1234. Your split should be stratified by the “count” variable.
+```{r}
+set.seed(1234)
+bike_split <- initial_split(bike, prop = 0.7, strata = count)
+bike_train <- training(bike_split)
+bike_test <- testing(bike_split)
+
+#Q1: How many rows of data are in the training set?
+#A1: 12163
+
+#Q2: Stratifying the split by the “count” variable serves what purpose?
+#A2: Stratifying by “count” ensures that “count” is similarly represented in both the training and testing sets.
+```
+
+Build a linear regression model (using the training set) to predict “count” using the variables “season”, “mnth”, “hr”, “holiday”, and “weekday”, “temp”, and “weathersit”
+```{r}
+bike_recipe <-
+  recipe(count ~ season + mnth + hr + holiday + weekday + temp + weathersit, bike_train)
+
+bike_model <-
+  linear_reg() %>%
+  set_engine("lm")
+
+bike_wflow <-
+  workflow() %>%
+  add_model(bike_model) %>%
+  add_recipe(bike_recipe)
+
+bike_fit <-
+  fit(bike_wflow, bike_train)
+```
+
+```{r}
+summary(bike_fit$fit$fit$fit)
+
+#Q3: What is the adjusted R-squared value (to four digits) of the resulting model?
+#A3: 0.6209
+```
+
+Use the predict functions to make predictions (using your model from Question 3) on the
+training set. Hint: Be sure to store the predictions in an object, perhaps named “predict_train”
+or similar. Develop a histogram of the predictions (Hint: The predictions are likely stored in a variable
+called “.pred” in your predictions object).
+```{r}
+predict_train <- predict(bike_fit, new_data=bike_train)
+ggplot(predict_train, aes(x=.pred)) +
+  geom_histogram()
+```
+Select the statements below that are likely true about the distribution of predictions?
+A. The maximum number of rides predicted for an hour is around 600 
+B. The average number of rides predicted per hour is around 450
+C. Some predictions for the number of rides in an hour are negative
+D. None of these statements are true
+
+A and C
+
+Determine the performance of your model on the testing set.
+```{r}
+bike_fit %>% predict(bike_test) %>% bind_cols(bike_test) %>% metrics(truth = count, estimate = .pred)
+
+#Q5: What is the R-squared value (to four decimal places) of your model on the testing set?
+#A5: 0.6271
+```
+

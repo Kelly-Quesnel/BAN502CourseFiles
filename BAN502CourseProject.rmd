@@ -1,0 +1,887 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+# BAN 502 Course Project Phase 1
+## Kelly Quesnel
+### Exploratory Analysis
+
+
+#### Libraries
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(mice)
+library(VIM)
+library(naniar)
+library(skimr)
+library(UpSetR)
+library(rpart)
+library(rpart.plot) 
+library(RColorBrewer) 
+library(rattle)
+library(caret)
+library(usemodels)
+library(glmnet)
+library(ROCR)
+library(ranger) 
+library(randomForest)
+library(GGally)
+library(gridExtra)
+library(vip)
+library(ggcorrplot)
+library(MASS)
+library(leaps)
+library(lmtest)
+library(splines)
+library(car)
+library(e1071)
+library(arules)
+library(corrplot)
+library(vcd)
+```
+
+#### Data
+
+Read in
+```{r, warning=FALSE, message=FALSE}
+train <- read_csv("train.csv")
+test <- read_csv("test.csv")
+```
+
+Summarize
+```{r}
+str(train)
+summary(train)
+```
+
+Factor conversion
+```{r}
+train <- train %>%
+  mutate_if(is.character, as_factor)
+
+str(train)
+summary(train)
+```
+
+#### Deal with missing values
+
+Visualize missing data
+```{r}
+gg_miss_var(train)
+gg_miss_fct(x = train, fct = failure)
+gg_miss_case(train)
+vis_miss(train)
+```
+
+Imputation
+```{r}
+set.seed(1234)
+imp_measures <-
+  mice(train, m=5, method='pmm', printFlag=FALSE)
+summary(imp_measures)
+```
+
+```{r}
+train_complete <-
+  complete(imp_measures)
+
+summary(train_complete)
+```
+
+#### Visualize and explore relationships
+
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x=product_code, fill = failure)) +
+  geom_bar() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x=attribute_0, fill = failure)) +
+  geom_bar() +
+  theme_bw()
+
+p3 <- 
+  ggplot(train_complete, aes(x=attribute_1, fill = failure)) +
+  geom_bar() +
+  theme_bw()
+
+grid.arrange(p1,p2,p3,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x=product_code, fill = failure)) +
+  geom_bar(position = "fill") +
+  theme_bw()
+
+p2 <- 
+  ggplot(train_complete, aes(x=attribute_0, fill = failure)) +
+  geom_bar(position = "fill") +
+  theme_bw()
+
+p3 <- 
+  ggplot(train_complete, aes(x=attribute_1, fill = failure)) +
+  geom_bar(position = "fill") +
+  theme_bw()
+
+grid.arrange(p1,p2,p3,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = loading)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = attribute_2)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+
+p3 <-
+  ggplot(train_complete, aes(x = failure, y = attribute_3)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p3,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_0)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_1)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+
+p3 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_2)) +
+  geom_boxplot() +
+  theme_bw()
+
+p4 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_3)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p3,p4,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_4)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_5)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+
+p3 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_6)) +
+  geom_boxplot() +
+  theme_bw()
+
+p4 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_7)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p3,p4,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_8)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_9)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+
+p3 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_10)) +
+  geom_boxplot() +
+  theme_bw()
+
+p4 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_11)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p3,p4,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_12)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_13)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+
+p3 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_14)) +
+  geom_boxplot() +
+  theme_bw()
+
+p4 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_15)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p3,p4,ncol=2)
+```
+```{r}
+p1 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_16)) +
+  geom_boxplot() +
+  theme_bw()
+
+p2 <-
+  ggplot(train_complete, aes(x = failure, y = measurement_17)) +
+  geom_boxplot() +
+  theme_bw()
+
+grid.arrange(p1,p2,ncol=2)
+```
+
+Look at a few variables of possible interest
+```{r}
+ggplot(train_complete, aes(x = failure, y = loading, fill = failure)) + 
+  geom_violin(trim = FALSE) +
+  theme_bw()
+
+ggplot(train_complete, aes(x = failure, y = measurement_17, fill = failure)) + 
+  geom_violin(trim = FALSE) +
+  theme_bw()
+```
+
+Look at summary stats with groups split by failure
+```{r}
+train_failyes <- train_complete[(which(train_complete$failure %in% "Yes")),]
+train_failno <- train_complete[(which(train_complete$failure %in% "No")),]
+
+```
+
+```{r}
+summary(train_failyes)
+```
+```{r}
+summary(train_failno)
+```
+Split numerical and categorical for correlation analysis
+```{r}
+num_vars <- train_complete %>%
+  select_if(is.numeric) %>%
+  dplyr::select(-id)
+
+cat_vars <- train_complete %>%
+  select_if(is.factor)
+```
+
+Correlation matrix of numerical variables
+```{r}
+cor_matrix <- cor(num_vars, use = "pairwise.complete.obs")
+corrplot(cor_matrix, method = "color", tl.cex = 0.7)
+```
+
+Chi-squared test for categorical variables
+```{r}
+for(var in names(cat_vars)) {
+  print(var)
+  print(chisq.test(table(cat_vars[[var]], train_complete$failure)))
+}
+```
+
+# BAN 502 Course Project Phase 2
+## Kelly Quesnel
+### Model Building and Predictions
+
+
+#### Libraries
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(mice)
+library(VIM)
+library(naniar)
+library(skimr)
+library(UpSetR)
+library(rpart)
+library(rpart.plot) 
+library(RColorBrewer) 
+library(rattle)
+library(caret)
+library(usemodels)
+library(glmnet)
+library(ROCR)
+library(ranger) 
+library(randomForest)
+library(GGally)
+library(gridExtra)
+library(vip)
+library(ggcorrplot)
+library(MASS)
+library(leaps)
+library(lmtest)
+library(splines)
+library(car)
+library(e1071)
+library(arules)
+library(corrplot)
+library(vcd)
+library(doParallel)
+library(themis)
+```
+
+#### Copy to new data frame and rename for clarity
+
+```{r}
+dataset <- train_complete
+```
+
+
+#### Look for Outliers
+
+*Going back to exploratory analysis for a moment to explore and deal with outliers as suggested.*
+
+```{r}
+ggplot(dataset, aes(x=loading)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_0)) +
+  geom_histogram() +
+  theme_bw()    
+
+ggplot(dataset, aes(x=measurement_1)) +
+  geom_histogram() +
+  theme_bw()    
+
+ggplot(dataset, aes(x=measurement_2)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_3)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_4)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_5)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_6)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_7)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_8)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_9)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_10)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_11)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_12)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_13)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_14)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_15)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_16)) +
+  geom_histogram() +
+  theme_bw()
+
+ggplot(dataset, aes(x=measurement_17)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+*Not immediately concerned with anything except perhaps loading.*
+
+```{r}
+dataset <- dataset %>%
+  filter(loading < 300)
+
+ggplot(dataset, aes(x=loading)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+#### Remove ID column
+
+```{r}
+dataset <- dataset %>%
+  dplyr::select(-id)
+```
+
+
+#### Split data for modeling
+
+```{r}
+set.seed(123)
+data_split <- initial_split(dataset, prop = 0.80, strata = failure)
+data_train <- training(data_split)
+data_test <- testing(data_split)
+```
+
+#### Create k folds
+```{r}
+set.seed(123)
+folds <- vfold_cv(data_train, v = 5)
+```
+
+
+#### Logistic Regression
+
+Build model
+```{r}
+model_logreg <-
+  logistic_reg(mode = "classification") %>%
+  set_engine("glm")
+
+recipe_logreg <-
+  recipe(failure ~., data_train)
+
+wf_logreg <-
+  workflow() %>%
+  add_recipe(recipe_logreg) %>%
+  add_model(model_logreg)
+
+set.seed(123)
+cv_results <- 
+  tune_grid(wf_logreg,
+  resamples = folds)
+
+fit_logreg <-
+  fit(wf_logreg, data_train)
+
+
+```
+
+Summarize model
+```{r}
+summary(fit_logreg$fit$fit$fit)
+```
+
+Predict on training
+```{r}
+logreg_train_pred <- predict(fit_logreg, data_train, type = "class")
+
+logreg_train_results <- data_train %>%
+  mutate(logreg_pred_class = logreg_train_pred$.pred_class)
+
+logreg_train_acc <- accuracy(logreg_train_results, truth = failure, estimate = logreg_pred_class)
+
+print(logreg_train_acc)
+
+confusionMatrix(logreg_train_pred$.pred_class,data_train$failure,positive="Yes")
+
+```
+Predict on testing
+```{r}
+logreg_test_pred <- predict(fit_logreg, data_test, type = "class")
+
+logreg_test_results <- data_test %>%
+  mutate(logreg_pred_class = logreg_test_pred$.pred_class)
+
+logreg_test_acc <- accuracy(logreg_test_results, truth = failure, estimate = logreg_pred_class)
+
+print(logreg_test_acc)
+
+confusionMatrix(logreg_test_pred$.pred_class,data_test$failure,positive="Yes")
+```
+
+#### Logistic Regression #2
+
+Split data
+```{r}
+set.seed(123)
+data_split2 <- initial_split(dataset, prop = 0.70, strata = failure)
+data_train2 <- training(data_split2)
+data_test2 <- testing(data_split2)
+
+```
+
+Create folds
+```{r}
+set.seed(123)
+folds10 <- vfold_cv(data_train2, v = 10)
+```
+
+Build model
+```{r}
+model_logreg2 <-
+  logistic_reg(mode = "classification") %>%
+  set_engine("glm")
+
+recipe_logreg2 <-
+  recipe(failure ~ loading + measurement_2 +
+           measurement_4 + measurement_5 +
+           measurement_6 + measurement_7 + 
+           measurement_8 + measurement_9 + 
+           measurement_16 + measurement_17 +
+           attribute_0,
+         data_train2)
+
+wf_logreg2 <-
+  workflow() %>%
+  add_recipe(recipe_logreg2) %>%
+  add_model(model_logreg2)
+
+set.seed(123)
+cv_results <- 
+  tune_grid(wf_logreg2,
+  resamples = folds10)
+
+fit_logreg2 <-
+  fit(wf_logreg2, data_train2)
+
+summary(fit_logreg$fit$fit$fit)
+```
+
+Predict on train
+```{r}
+logreg_train_pred2 <- predict(fit_logreg2, data_train2, type = "class")
+
+logreg_train_results2 <- data_train2 %>%
+  mutate(logreg_pred_class2 = logreg_train_pred2$.pred_class)
+
+logreg_train_acc2 <- accuracy(logreg_train_results2, truth = failure, estimate = logreg_pred_class2)
+
+print(logreg_train_acc2)
+
+confusionMatrix(logreg_train_pred2$.pred_class,data_train2$failure,positive="Yes")
+```
+
+Predict on test
+```{r}
+logreg_test_pred2 <- predict(fit_logreg2, data_test2, type = "class")
+
+logreg_test_results2 <- data_test2 %>%
+  mutate(logreg_pred_class2 = logreg_test_pred2$.pred_class)
+
+logreg_test_acc2 <- accuracy(logreg_test_results2, truth = failure, estimate = logreg_pred_class2)
+
+print(logreg_test_acc2)
+
+confusionMatrix(logreg_test_pred2$.pred_class,data_test2$failure,positive="Yes")
+```
+
+
+**LOG REG EVALUATION: The model results in just under 80% accuracy on both training and testing for both log reg models. This is an okay level of accuracy, but could probably be better. The good news is that the accuracy consistency shows little evidence of overfitting..**
+
+#### Classification Tree
+
+Build model
+```{r}
+tree_recipe <- 
+  recipe(failure  ~., data_train)
+
+tree_model <-
+  decision_tree() %>% 
+  set_engine("rpart", model = TRUE) %>%
+  set_mode("classification")
+
+tree_wf <-
+  workflow() %>% 
+  add_model(tree_model) %>% 
+  add_recipe(tree_recipe)
+
+set.seed(123)
+cv_tree <- tune_grid(
+  tree_wf,
+  resamples = folds)
+
+tree_fit <- 
+  fit(tree_wf, data_train)
+
+tree_best <- select_best(cv_tree, metric = "accuracy")
+
+tree_wf_final <- finalize_workflow(tree_wf, tree_best)
+
+tree_fit_final <- fit(tree_wf_final, data_train)
+
+tree <- 
+  tree_fit_final %>% 
+  pull_workflow_fit() %>% 
+  pluck("fit")
+
+rpart.plot(tree)
+```
+
+**I tried many, many edits to this and tuning options and no matter what cannot get more than one node. I even subsetted the data, and that resulted in a branched tree, but no matter what I just can't get this one to branch. I probably should not have deleted out the other 10+ attempts at this that I made that resulted in the same single node, but I did. I'm going to move on to random forest modeling and see what happens there.**
+
+
+#### Random Forest
+
+Build model
+```{r}
+cl <- makePSOCKcluster(detectCores() - 1)   # Borrowed code to try and speed processing
+registerDoParallel(cl)
+
+rf_recipe <-
+  recipe(failure ~., data_train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+rf_model <-
+  rand_forest(mtry = tune(), min_n = tune(), trees = 100) %>%
+  set_engine("ranger") %>% 
+  set_mode("classification")
+
+rf_wf <- 
+  workflow() %>% 
+  add_model(rf_model) %>% 
+  add_recipe(rf_recipe)
+
+grid <- grid_regular(
+  mtry(range = c(1, 25)),
+  min_n(range = c(1, 10)),  
+  levels = 5)     
+
+set.seed(123)
+rf_res <- tune_grid(
+  rf_wf,
+  resamples = folds,
+  grid = grid)
+
+stopCluster(cl)
+registerDoSEQ()
+```
+```{r}
+rf_res %>%
+  collect_metrics() %>%
+  filter(.metric == "accuracy") %>%
+  mutate(min_n = factor(min_n)) %>%
+  ggplot(aes(mtry, mean, color = min_n)) +
+  geom_line(alpha = 0.5, size = 1.5) +
+  geom_point() +
+  labs(y = "Accuracy")
+```
+
+Final fit
+```{r}
+rf_best <-
+  select_best(rf_res, metric = "accuracy")
+
+rf_final <-
+  finalize_workflow(rf_wf, rf_best)
+
+rf_final
+```
+```{r}
+rf_final_fit <-
+  fit(rf_final, data_train)
+```
+
+Predict on train
+```{r}
+rf_train_pred <-
+  predict(rf_final_fit, data_train)
+
+head(rf_train_pred)
+
+confusionMatrix(rf_train_pred$.pred_class,
+                data_train$failure,
+                positive = "Yes")
+```
+
+Predict on test
+```{r}
+rf_test_pred <-
+  predict(rf_final_fit, data_test)
+
+head(rf_test_pred)
+
+confusionMatrix(rf_test_pred$.pred_class,
+                data_test$failure,
+                positive = "Yes")
+```
+
+**There appears to be significant overfitting happening here. On data_test, we got Accuracy: 0.9999, Sensitivity: 0.9993, Specificity: 1, No Information Rate: 0.7878. On data_test, that turned into Accuracy: 0.7924, Sensitivity: 0.040816, Specificity: 0.994977, No Information Rate: 0.7877.**
+
+*Plan for RF #2: Use ideal values of mtry and min_n found above. Let's see what happens...*
+
+#### Random Forest #2
+
+Build model
+```{r}
+cl <- makePSOCKcluster(detectCores() - 1)   # Borrowed code to try and speed processing
+registerDoParallel(cl)
+
+set.seed(123)      # Plugging this in again just to make sure, though pretty sure it's already fine.
+folds <- vfold_cv(data_train, v = 5)   
+
+rf_recipe2 <-
+  recipe(failure ~., data_train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+rf_model2 <- 
+  rand_forest(mtry = tune(),         
+              min_n = tune(),         
+              trees = 100) %>%
+  set_engine("ranger") %>%
+  set_mode("classification")
+
+rf_wf2 <- workflow() %>%
+  add_model(rf_model2) %>%
+  add_recipe(rf_recipe2)
+
+grid2 <- 
+  grid_regular(mtry(range = c(13, 13)),
+               min_n(range = c(3, 3)),
+               levels = 5)
+
+set.seed(123)
+rf_res2 <- 
+  tune_grid(rf_wf2,
+            resamples = folds,
+            grid = grid2)
+
+stopCluster(cl)
+registerDoSEQ()
+```
+
+Final fit
+```{r}
+rf_best2 <-
+  select_best(rf_res2, metric = "accuracy")
+
+rf_final2 <-
+  finalize_workflow(rf_wf2, rf_best2)
+
+rf_final2
+
+rf_final_fit2 <-
+  fit(rf_final2, data_train)
+
+```
+
+Predict on train
+```{r}
+rf_train_pred2 <-
+  predict(rf_final_fit2, data_train)
+
+head(rf_train_pred2)
+
+confusionMatrix(rf_train_pred2$.pred_class,
+                data_train$failure,
+                positive = "Yes")
+```
+
+Predict on test
+```{r}
+rf_test_pred2 <-
+  predict(rf_final_fit2, data_test)
+
+head(rf_test_pred2)
+
+confusionMatrix(rf_test_pred2$.pred_class,
+                data_test$failure,
+                positive = "Yes")
+```
+**Still looks like overfitting, although upon further research I am seeing a lot of data science professionals saying that with random forests this is not only common but also not super concerning, like it would be for other models like log regs and classification trees. So I'm going to let this ride.**
+
+
+
+
+*Random code I borrowed to attempt to estimate how much time running the RF model would take*
+
+cl <- makePSOCKcluster(detectCores() - 1)   # Borrowed code to try and speed processing
+registerDoParallel(cl)
+
+set.seed(123)
+data_sample <- data_train %>% sample_n(1000)
+
+set.seed(123)
+folds_sample <- vfold_cv(data_sample, v = 5)
+
+rf_recipe_samp <-
+  recipe(failure ~., data_sample) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+rf_model_samp <-
+  rand_forest(mtry = tune(), min_n = tune(), trees = 100) %>%
+  set_engine("ranger") %>% 
+  set_mode("classification")
+
+rf_wf_samp <- 
+  workflow() %>% 
+  add_model(rf_model_samp) %>% 
+  add_recipe(rf_recipe_samp)
+
+grid <- grid_regular(
+  mtry(range = c(1, 25)),
+  min_n(range = c(1, 10)),  
+  levels = 3)     
+
+start_time <- Sys.time()
+
+set.seed(123)
+rf_res <- tune_grid(
+  rf_wf_samp,
+  resamples = folds_sample,
+  grid = grid)
+
+end_time <- Sys.time()
+single_iteration_time <- end_time - start_time
+print(single_iteration_time)
+
+single_iteration_seconds <- as.numeric(single_iteration_time, units = "secs")
+num_resamples <- 5
+num_combinations <- 25
+total_estimated_time_seconds <- single_iteration_seconds * num_resamples * num_combinations
+total_estimated_time_minutes <- total_estimated_time_seconds / 60
+total_estimated_time_hours <- total_estimated_time_minutes / 60
+
+print(total_estimated_time_minutes)
+print(total_estimated_time_hours)
+
+
+
+

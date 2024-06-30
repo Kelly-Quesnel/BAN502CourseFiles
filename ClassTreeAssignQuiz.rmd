@@ -1,0 +1,238 @@
+# Module 4 - Assignment 2
+## Kelly Quesnel
+### Classification Trees Assignment Quiz
+
+
+#### Libraries
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(RColorBrewer)
+```
+
+#### Read in and clean data
+
+Read in
+```{r}
+heart <- read_csv("heart_disease-1.csv")
+```
+
+Convert to factors and recode
+```{r}
+heart <- heart %>%
+  mutate(Sex = as_factor(Sex)) %>%
+  mutate(ChestPainType = as_factor(ChestPainType)) %>%
+  mutate(RestingECG = as_factor(RestingECG)) %>%
+  mutate(ExerciseAngina = as_factor(ExerciseAngina)) %>%
+  mutate(ST_Slope = as_factor(ST_Slope)) %>%
+  mutate(HeartDisease = as_factor(HeartDisease)) %>%
+  mutate(HeartDisease = fct_recode(HeartDisease, "No" = "0", "Yes" = "1"))
+
+```
+
+
+#### Task 1
+
+Split the data into training and testing sets. Your training set should have 70% of the data. Use a random number (set.seed) of 12345. Stratify your split by the response variable “HeartDisease".
+
+Q: How many rows are in the training set?
+A: 642
+
+Code:
+```{r}
+set.seed(12345)
+heart_split <-
+  initial_split(heart, prop = 0.7, strata = HeartDisease)
+train <- training(heart_split)
+test <- testing(heart_split)
+
+nrow(train)
+```
+
+#### Task 2
+
+Create a classification tree to predict “HeartDisease” in the training set (using all of the other variables as predictors). Plot the tree. You do not need to manually tune the complexity parameter (i.e., it’s OK to allow R to try different cp values on its own). Do not use k-folds at this point.
+
+Q: The first split in the tree is a split on which variable?
+A: ST_Slope
+
+Code:
+```{r}
+heart_recipe <-
+  recipe(HeartDisease ~., train)
+
+heart_model <-
+  decision_tree() %>%
+  set_engine("rpart", model = TRUE) %>%
+  set_mode("classification")
+
+heart_wflow <-
+  workflow() %>%
+  add_model(heart_model) %>%
+  add_recipe(heart_recipe)
+
+heart_fit <-
+  fit(heart_wflow, train)
+```
+```{r}
+tree <-
+  heart_fit %>%
+  extract_fit_parsnip() %>%
+  pluck("fit")
+
+rpart.plot(tree)
+```
+
+#### Task 3
+
+Examine the complexity parameter (cp) values tried by R.
+
+Q: Which cp value is optimal (recall that the optimal cp corresponds to the minimized “xerror” value)? Report your answer to two decimal places.
+A: 0.02 (?) 0.01742160?
+   0.39???
+
+Code:
+```{r}
+heart_fit$fit$fit$fit$cptable
+```
+
+#### Task 4
+
+Use a tuning grid (as we did in the Titanic problem) to allow R to try 25 different values for the complexity parameter (cp). R will select reasonable values. Use 5-fold k-fold cross-validation (don’t forget to set up your folds). Use a seed of 123 when setting up your folds.
+
+Hint: You can reuse the vast majority of the code that I provided for you. Be careful to change names and you should be “good to go”. Note: This model took about two minutes to run on my computer. Your run time will vary by your computational power :) Plot the relationship between the complexity parameter (cp) and model performance (given by accuracy and by ROC AUC). I have provided code in the lectures that use the “collect_metrics” functions to help you do this.
+
+Q: From this plot, what is the accuracy of the model (to two decimal places) if a cp value of 0.1 is selected? You will need to “eyeball” this answer. I have included a bit of a tolerance in the answer on Canvas. As long as you are “close” to the correct accuracy, you will see your answer marked as correct.
+A: 0.78
+
+Code:
+```{r}
+#create folds
+set.seed(123)
+folds <- vfold_cv(train, v = 5)
+
+#tune model
+heart_recipe <-
+  recipe(HeartDisease ~., train) %>%
+  step_dummy(all_nominal(),-all_outcomes())
+
+heart_model <-
+  decision_tree(cost_complexity = tune()) %>% 
+  set_engine("rpart", model = TRUE) %>% #don't forget the model = TRUE flag
+  set_mode("classification")
+
+heart_grid <-
+  grid_regular(cost_complexity(),
+                    levels = 25) #try 25 sensible values for cp
+
+heart_wflow <- 
+  workflow() %>% 
+  add_model(heart_model) %>% 
+  add_recipe(heart_recipe)
+
+heart_res <- 
+  heart_wflow %>% 
+  tune_grid(
+    resamples = folds,
+    grid = heart_grid
+    )
+
+heart_res
+
+#visualize
+heart_res %>%
+  collect_metrics() %>%
+  ggplot(aes(cost_complexity, mean)) +
+  geom_line(size = 1.5, alpha = 0.6) +
+  geom_point(size = 2) +
+  facet_wrap(~ .metric, scales = "free", nrow = 2)
+```
+
+#### Task 5
+
+Q: Which cp value (to four decimal places) yields the “optimal” accuracy value?
+A: 0.0075
+
+Code:
+```{r}
+best_tree <-
+  heart_res %>%
+  select_best(metric = "accuracy")
+
+best_tree
+```
+
+#### Task 6
+
+Plot the tree that corresponds to the cp value from Question 5. Don’t forget to finalize your workflow and generate your final fit before trying to plot.
+
+Q: How would you classify a patient that is “Male” with an “ST_Slope” that is “Flat”?
+A: "Yes"?
+
+Code:
+```{r}
+final_wf <- 
+  heart_wflow %>% 
+  finalize_workflow(best_tree)
+
+final_fit <-
+  fit(final_wf, train)
+
+tree <-
+  final_fit %>% 
+  extract_fit_parsnip() %>% 
+  pluck("fit")
+
+fancyRpartPlot(tree, tweak = 1.15)
+```
+
+#### Task 7
+
+Q: What is the accuracy (on the training set) of the “tree” that you generated in Question 6? Take your time and think about how to determine this value. Report your answer to four decimal places.
+A: 0.8754
+
+Code:
+```{r}
+treepred <-
+  predict(final_fit, train, type = "class")
+head(treepred)
+
+confusionMatrix(treepred$.pred_class,train$HeartDisease,positive="Yes") #predictions first then actual
+```
+
+#### Task 8
+
+Q: What is the sensitivity of your model from Question 6 (on the training set)? Report your answer to four decimal places.
+A: 0.9239
+
+
+#### Task 9
+
+Q: What is the naive accuracy of your model from Question 6 (on the training set)? Report your answer to four decimal places.
+A: 0.4470
+
+Code:
+```{r}
+# Equation : (TP + FP) / n
+(328 + 27) / nrow(train)
+```
+
+#### Task 10
+
+Q: What is the accuracy of your model from Question 6 on the testing set (to four decimal places)?
+A: 0.8478
+
+Code:
+```{r}
+treepred_test <-
+  predict(final_fit, test, type = "class")
+head(treepred_test)
+
+confusionMatrix(treepred_test$.pred_class,test$HeartDisease,positive="Yes")
+```
+
